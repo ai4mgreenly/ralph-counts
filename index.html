@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ralph Counts</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #12131a;
+    --bg-card: #161820;
+    --bg-card-hover: #1a1c26;
+    --border: #1e2030;
+    --border-glow: #2d3055;
+    --text-primary: #e4e6ef;
+    --text-secondary: #8b8fa7;
+    --text-muted: #5a5e78;
+    --accent-blue: #6c8aff;
+    --accent-purple: #a78bfa;
+    --accent-teal: #2dd4bf;
+    --accent-orange: #fb923c;
+    --accent-pink: #f472b6;
+    --accent-green: #34d399;
+    --accent-red: #f87171;
+    --accent-yellow: #fbbf24;
+    --glow-blue: rgba(108, 138, 255, 0.15);
+    --glow-purple: rgba(167, 139, 250, 0.1);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Ambient background glow */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, var(--glow-blue) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, var(--glow-purple) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .loading.hidden { display: none; }
+  .loading h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .loading p { color: var(--text-muted); font-size: 0.95rem; }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .dashboard {
+    display: none;
+    padding: 32px 40px;
+    max-width: 1500px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .dashboard.visible { display: block; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .refresh-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .refresh-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .refresh-badge.stale .refresh-dot { background: var(--accent-orange); }
+
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .last-updated {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Summary cards */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .stat-card:hover {
+    border-color: var(--border-glow);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-card .value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-card .label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 500;
+  }
+
+  /* Chart grid */
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.25s ease;
+  }
+  .chart-card:hover {
+    border-color: var(--border-glow);
+    background: var(--bg-card-hover);
+  }
+  .chart-card h3 {
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .chart-card canvas { width: 100% !important; }
+
+  /* Time range filter */
+  .time-filter {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .time-filter button {
+    padding: 6px 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+  }
+  .time-filter button:hover {
+    color: var(--text-secondary);
+    background: rgba(108, 138, 255, 0.06);
+  }
+  .time-filter button.active {
+    background: rgba(108, 138, 255, 0.15);
+    color: var(--accent-blue);
+    box-shadow: 0 0 12px rgba(108, 138, 255, 0.1);
+  }
+  .filter-info {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 20px;
+  }
+
+  .error-banner {
+    display: none;
+    padding: 12px 20px;
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    border-radius: 8px;
+    color: var(--accent-red);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .error-banner.visible { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+  @media (max-width: 700px) {
+    .dashboard { padding: 16px; }
+    .charts { grid-template-columns: 1fr; }
+    .summary { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <h1>Ralph Counts</h1>
+  <div class="spinner"></div>
+  <p>Connecting to server...</p>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <h1>Ralph Counts</h1>
+      <div class="refresh-badge" id="refreshBadge">
+        <div class="refresh-dot"></div>
+        <span id="refreshTimer">30s</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="time-filter" id="timeFilter">
+        <button data-range="24h">24h</button>
+        <button data-range="7d" class="active">7d</button>
+        <button data-range="30d">30d</button>
+        <button data-range="12m">12m</button>
+        <button data-range="52w">52w</button>
+      </div>
+      <span class="last-updated" id="lastUpdated"></span>
+    </div>
+  </div>
+  <div class="filter-info" id="filterInfo"></div>
+  <div class="error-banner" id="errorBanner"></div>
+  <div class="summary" id="summary"></div>
+  <div class="charts" id="charts"></div>
+</div>
+
+<script>
+const dashboard = document.getElementById('dashboard');
+const loading = document.getElementById('loading');
+const refreshTimer = document.getElementById('refreshTimer');
+const refreshBadge = document.getElementById('refreshBadge');
+const lastUpdated = document.getElementById('lastUpdated');
+const errorBanner = document.getElementById('errorBanner');
+
+let activeCharts = [];
+let countdown = 30;
+let countdownInterval = null;
+let lastDataHash = '';
+let allData = [];
+let activeRange = '7d';
+const filterInfo = document.getElementById('filterInfo');
+const timeFilter = document.getElementById('timeFilter');
+
+timeFilter.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-range]');
+  if (!btn) return;
+  timeFilter.querySelector('.active').classList.remove('active');
+  btn.classList.add('active');
+  activeRange = btn.dataset.range;
+  if (allData.length) render(filterByRange(allData, activeRange));
+});
+
+function filterByRange(data, range) {
+  const now = new Date();
+  const hours = { '24h': 24, '7d': 7 * 24, '30d': 30 * 24, '52w': 52 * 7 * 24, '12m': 365 * 24 };
+  const cutoff = new Date(now.getTime() - (hours[range] || 0) * 3600000);
+  return data.filter(d => d.started_at && new Date(d.started_at) >= cutoff);
+}
+
+function destroyCharts() {
+  activeCharts.forEach(c => c.destroy());
+  activeCharts = [];
+}
+
+async function fetchStats() {
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    errorBanner.classList.remove('visible');
+
+    // Only re-render if data changed
+    const hash = text.length + ':' + text.slice(-200);
+    if (hash === lastDataHash) return;
+    lastDataHash = hash;
+
+    const lines = text.trim().split('\n');
+    allData = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    if (!allData.length) return;
+
+    loading.classList.add('hidden');
+    dashboard.classList.add('visible');
+    render(filterByRange(allData, activeRange));
+    lastUpdated.textContent = 'updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    if (!dashboard.classList.contains('visible')) {
+      loading.querySelector('p').textContent = 'Cannot reach server. Run: python3 serve.py';
+    }
+    errorBanner.textContent = 'Failed to fetch stats: ' + e.message;
+    errorBanner.classList.add('visible');
+  }
+}
+
+function startCountdown() {
+  countdown = 30;
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    countdown--;
+    refreshTimer.textContent = countdown + 's';
+    if (countdown <= 5) refreshBadge.classList.add('stale');
+    if (countdown <= 0) {
+      countdown = 30;
+      refreshBadge.classList.remove('stale');
+      fetchStats();
+    }
+  }, 1000);
+}
+
+function fmtDuration(s) {
+  if (s < 60) return s.toFixed(0) + 's';
+  if (s < 3600) return (s / 60).toFixed(1) + 'm';
+  return (s / 3600).toFixed(1) + 'h';
+}
+
+function fmtCost(v) { return '$' + v.toFixed(2); }
+function fmtTokens(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toString();
+}
+
+function shortGoal(g) {
+  if (!g) return '?';
+  let name = g.replace(/^goals\//, '').replace(/\.md$/, '');
+  // Named goals: "foo-ralph-goal-2026-..." -> "foo"
+  if (name.includes('-ralph-goal-')) {
+    name = name.replace(/-ralph-goal-.*$/, '');
+  } else if (name.startsWith('goal-')) {
+    // Unnamed goals: "goal-2026-02-08T16-41-29" -> "Feb 8 16:41"
+    const m = name.match(/^goal-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
+    if (m) {
+      const d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]);
+      name = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    }
+  }
+  return name.length > 30 ? name.slice(0, 30) + '...' : name;
+}
+
+const COLORS = {
+  blue: { bg: 'rgba(108, 138, 255, 0.6)', border: '#6c8aff' },
+  purple: { bg: 'rgba(167, 139, 250, 0.6)', border: '#a78bfa' },
+  teal: { bg: 'rgba(45, 212, 191, 0.6)', border: '#2dd4bf' },
+  orange: { bg: 'rgba(251, 146, 60, 0.6)', border: '#fb923c' },
+  pink: { bg: 'rgba(244, 114, 182, 0.6)', border: '#f472b6' },
+  green: { bg: 'rgba(52, 211, 153, 0.6)', border: '#34d399' },
+  red: { bg: 'rgba(248, 113, 113, 0.6)', border: '#f87171' },
+  yellow: { bg: 'rgba(251, 191, 36, 0.6)', border: '#fbbf24' },
+  sky: { bg: 'rgba(56, 189, 248, 0.6)', border: '#38bdf8' },
+  indigo: { bg: 'rgba(129, 140, 248, 0.6)', border: '#818cf8' },
+  gray: { bg: 'rgba(107, 114, 128, 0.5)', border: '#6b7280' },
+};
+
+function render(data) {
+  destroyCharts();
+  const summaryEl = document.getElementById('summary');
+  const chartsEl = document.getElementById('charts');
+  chartsEl.innerHTML = '';
+
+  if (!data.length) {
+    summaryEl.innerHTML = '';
+    filterInfo.textContent = 'No tasks in this time range.';
+    return;
+  }
+
+  filterInfo.textContent = `Showing ${data.length} of ${allData.length} tasks`;
+
+  const totalCost = data.reduce((s, d) => s + d.cost_usd, 0);
+  const totalTime = data.reduce((s, d) => s + d.time_seconds.total, 0);
+  const totalTasks = data.length;
+  const totalToolUses = data.reduce((s, d) => s + d.tool_uses, 0);
+  const totalMessages = data.reduce((s, d) => s + d.assistant_messages, 0);
+  const avgCost = totalCost / totalTasks;
+  const totalTokensIn = data.reduce((s, d) => s + d.tokens.input + d.tokens.cache_read + d.tokens.cache_create, 0);
+  const totalTokensOut = data.reduce((s, d) => s + d.tokens.output, 0);
+  const totalLinesChanged = data.reduce((s, d) => s + (d.lines_added || 0) + (d.lines_deleted || 0), 0);
+
+  summaryEl.innerHTML = [
+    { value: totalTasks, label: 'Tasks' },
+    { value: fmtCost(totalCost), label: 'Total Cost' },
+    { value: fmtCost(avgCost), label: 'Avg Cost' },
+    { value: fmtDuration(totalTime), label: 'Total Time' },
+    { value: totalLinesChanged.toLocaleString(), label: 'Lines Changed' },
+    { value: totalToolUses.toLocaleString(), label: 'Tool Uses' },
+    { value: fmtTokens(totalTokensIn), label: 'Tokens In' },
+    { value: fmtTokens(totalTokensOut), label: 'Tokens Out' },
+  ].map(s => `<div class="stat-card"><div class="value">${s.value}</div><div class="label">${s.label}</div></div>`).join('');
+
+  // --- Time-based bucketing ---
+  function getGranularity(range) {
+    switch (range) {
+      case '24h': return 'hour';
+      case '7d': return 'day';
+      case '30d': return 'day';
+      case '52w': return 'week';
+      case '12m': return 'month';
+      default: return 'day';
+    }
+  }
+
+  function bucketKey(date, gran) {
+    const y = date.getFullYear(), m = date.getMonth(), d = date.getDate(), h = date.getHours();
+    if (gran === 'hour') return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}`;
+    if (gran === 'day') return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if (gran === 'week') {
+      const w = new Date(y, m, d - date.getDay());
+      return `${w.getFullYear()}-${String(w.getMonth()+1).padStart(2,'0')}-${String(w.getDate()).padStart(2,'0')}`;
+    }
+    return `${y}-${String(m+1).padStart(2,'0')}`;
+  }
+
+  function bucketLabel(key, gran) {
+    if (gran === 'hour') {
+      const h = parseInt(key.split('T')[1], 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return h12 + ' ' + ampm;
+    }
+    if (gran === 'month') {
+      const [y, m] = key.split('-');
+      return new Date(+y, +m - 1).toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+    }
+    if (gran === 'week') return 'W/O ' + new Date(key + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return new Date(key + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  const gran = getGranularity(activeRange);
+  const bucketMap = {};
+  data.forEach(d => {
+    if (!d.started_at) return;
+    const key = bucketKey(new Date(d.started_at), gran);
+    if (!bucketMap[key]) bucketMap[key] = [];
+    bucketMap[key].push(d);
+  });
+
+  // Fill in all time slots so empty periods show as zero
+  const rangeHours = { '24h': 24, '7d': 7 * 24, '30d': 30 * 24, '365d': 365 * 24 };
+  const stepMs = { hour: 3600000, day: 86400000, week: 7 * 86400000, month: null };
+  const now = new Date();
+  let sortedKeys;
+  sortedKeys = [];
+  if (gran === 'month') {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      sortedKeys.push(bucketKey(d, gran));
+    }
+  } else {
+    const slotCounts = { '24h': 24, '7d': 7, '30d': 30, '52w': 52 };
+    const n = slotCounts[activeRange];
+    const step = stepMs[gran];
+    for (let i = n - 1; i >= 0; i--) {
+      sortedKeys.push(bucketKey(new Date(now.getTime() - i * step), gran));
+    }
+    sortedKeys = [...new Set(sortedKeys)];
+  }
+
+  const timeLabels = sortedKeys.map(k => bucketLabel(k, gran));
+  const sum = (fn) => sortedKeys.map(k => (bucketMap[k] || []).reduce((s, d) => s + fn(d), 0));
+  const avg = (fn) => sortedKeys.map(k => {
+    const items = bucketMap[k];
+    if (!items || !items.length) return null;
+    return items.reduce((s, d) => s + fn(d), 0) / items.length;
+  });
+  const granLabel = gran === 'hour' ? 'Hourly' : gran === 'day' ? 'Daily' : gran === 'week' ? 'Weekly' : 'Monthly';
+
+  const chartDefs = [
+    {
+      title: granLabel + ' Cost',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [{
+        label: 'USD', data: sum(d => d.cost_usd),
+        backgroundColor: COLORS.blue.bg, borderColor: COLORS.blue.border, borderWidth: 1, borderRadius: 4,
+      }] },
+      opts: { scales: { y: { ticks: { callback: v => '$' + v.toFixed(0) } } } }
+    },
+    {
+      title: 'Cumulative Cost',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [{
+        label: 'USD',
+        data: sum(d => d.cost_usd).reduce((a, v) => { a.push((a.length ? a[a.length - 1] : 0) + v); return a; }, []),
+        borderColor: COLORS.orange.border, backgroundColor: 'rgba(251, 146, 60, 0.08)',
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+      }] },
+      opts: { scales: { y: { ticks: { callback: v => '$' + v.toFixed(0) } } } }
+    },
+    {
+      title: granLabel + ' Tasks Completed',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [{
+        label: 'Tasks', data: sortedKeys.map(k => (bucketMap[k] || []).length),
+        backgroundColor: COLORS.green.bg, borderColor: COLORS.green.border, borderWidth: 1, borderRadius: 4,
+      }] },
+      opts: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    },
+    {
+      title: granLabel + ' Tokens In / Out',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [
+        { label: 'Tokens In', data: sum(d => d.tokens.input + d.tokens.cache_read + d.tokens.cache_create), backgroundColor: COLORS.yellow.bg, borderRadius: 2 },
+        { label: 'Tokens Out', data: sum(d => d.tokens.output), backgroundColor: COLORS.indigo.bg, borderRadius: 2 },
+      ] },
+      opts: { scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => fmtTokens(v) } } } }
+    },
+    {
+      title: granLabel + ' Cache Tokens',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [
+        { label: 'Cache Read', data: sum(d => d.tokens.cache_read), backgroundColor: COLORS.sky.bg, borderRadius: 2 },
+        { label: 'Cache Create', data: sum(d => d.tokens.cache_create), backgroundColor: COLORS.pink.bg, borderRadius: 2 },
+      ] },
+      opts: { scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => fmtTokens(v) } } } }
+    },
+    {
+      title: granLabel + ' Time Breakdown',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [
+        { label: 'LLM', data: sum(d => d.time_seconds.llm), backgroundColor: COLORS.purple.bg, borderRadius: 2 },
+        { label: 'Tools', data: sum(d => d.time_seconds.tools), backgroundColor: COLORS.green.bg, borderRadius: 2 },
+        { label: 'Other', data: sum(d => d.time_seconds.other), backgroundColor: COLORS.gray.bg, borderRadius: 2 },
+      ] },
+      opts: { scales: { x: { stacked: true }, y: { stacked: true } } }
+    },
+    {
+      title: granLabel + ' Total Duration',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [{
+        label: 'Seconds', data: sum(d => d.time_seconds.total),
+        backgroundColor: COLORS.teal.bg, borderColor: COLORS.teal.border, borderWidth: 1, borderRadius: 4,
+      }] },
+      opts: {}
+    },
+    {
+      title: granLabel + ' Iterations',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [{
+        label: 'Iterations', data: sum(d => d.iterations),
+        backgroundColor: COLORS.green.bg, borderColor: COLORS.green.border, borderWidth: 1, borderRadius: 4,
+      }] },
+      opts: { scales: { y: { beginAtZero: true } } }
+    },
+    {
+      title: granLabel + ' Tool Uses & Messages',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [
+        { label: 'Tool Uses', data: sum(d => d.tool_uses), backgroundColor: COLORS.orange.bg, borderRadius: 2 },
+        { label: 'Messages', data: sum(d => d.assistant_messages), backgroundColor: COLORS.sky.bg, borderRadius: 2 },
+      ] },
+      opts: {}
+    },
+    {
+      title: 'Avg Cost per Task',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [{
+        label: '$/task',
+        data: avg(d => d.cost_usd),
+        spanGaps: true,
+        borderColor: COLORS.red.border, backgroundColor: 'rgba(248, 113, 113, 0.08)',
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+      }] },
+      opts: { scales: { y: { ticks: { callback: v => '$' + v.toFixed(2) } } } }
+    },
+    {
+      title: 'Avg Time per Task',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [{
+        label: 'min/task',
+        data: avg(d => d.time_seconds.total / 60),
+        spanGaps: true,
+        borderColor: COLORS.teal.border, backgroundColor: 'rgba(45, 212, 191, 0.08)',
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+      }] },
+      opts: { scales: { y: { ticks: { callback: v => v.toFixed(0) + 'm' } } } }
+    },
+    {
+      title: 'Avg Iterations per Task',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [{
+        label: 'iter/task',
+        data: avg(d => d.iterations),
+        spanGaps: true,
+        borderColor: COLORS.purple.border, backgroundColor: 'rgba(167, 139, 250, 0.08)',
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+      }] },
+      opts: { scales: { y: { beginAtZero: true } } }
+    },
+    {
+      title: 'Avg Tokens per Task',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [
+        {
+          label: 'In/task',
+          data: avg(d => d.tokens.input + d.tokens.cache_read + d.tokens.cache_create),
+          spanGaps: true,
+          borderColor: COLORS.yellow.border, backgroundColor: 'rgba(251, 191, 36, 0.08)',
+          fill: false, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+        },
+        {
+          label: 'Out/task',
+          data: avg(d => d.tokens.output),
+          spanGaps: true,
+          borderColor: COLORS.indigo.border, backgroundColor: 'rgba(129, 140, 248, 0.08)',
+          fill: false, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+        },
+      ] },
+      opts: { scales: { y: { ticks: { callback: v => fmtTokens(v) } } } }
+    },
+    {
+      title: granLabel + ' Lines Changed',
+      type: 'bar',
+      data: { labels: timeLabels, datasets: [
+        { label: 'Added', data: sum(d => d.lines_added || 0), backgroundColor: COLORS.green.bg, borderRadius: 2 },
+        { label: 'Deleted', data: sum(d => d.lines_deleted || 0), backgroundColor: COLORS.red.bg, borderRadius: 2 },
+      ] },
+      opts: { scales: { x: { stacked: true }, y: { stacked: true } } }
+    },
+    {
+      title: 'Cumulative Lines Changed',
+      type: 'line',
+      data: { labels: timeLabels, datasets: [{
+        label: 'Lines',
+        data: sum(d => (d.lines_added || 0) + (d.lines_deleted || 0)).reduce((a, v) => { a.push((a.length ? a[a.length - 1] : 0) + v); return a; }, []),
+        borderColor: COLORS.pink.border, backgroundColor: 'rgba(244, 114, 182, 0.08)',
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2,
+      }] },
+      opts: {}
+    },
+  ];
+
+  // Time per goal chart (recent goals, horizontal bar)
+  const recentGoals = data.slice(-15).reverse();
+  if (recentGoals.length > 0) {
+    const goalLabels = recentGoals.map(d => shortGoal(d.goal_file));
+    const goalTimes = recentGoals.map(d => d.time_seconds.total / 60);
+    const goalCard = document.createElement('div');
+    goalCard.className = 'chart-card';
+    goalCard.innerHTML = `<h3>Time per Goal (Recent)</h3><canvas></canvas>`;
+    chartsEl.appendChild(goalCard);
+    const ctx = goalCard.querySelector('canvas').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: goalLabels,
+        datasets: [{
+          label: 'Minutes',
+          data: goalTimes,
+          backgroundColor: COLORS.teal.bg,
+          borderColor: COLORS.teal.border,
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 400, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1c26',
+            titleColor: '#e4e6ef',
+            bodyColor: '#8b8fa7',
+            borderColor: '#2d3055',
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: { label: ctx => fmtDuration(ctx.raw * 60) }
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: '#5a5e78', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v.toFixed(0) + 'm' },
+            grid: { color: 'rgba(30, 32, 48, 0.8)', lineWidth: 0.5 },
+          },
+          y: {
+            ticks: { color: '#8b8fa7', font: { family: 'Inter', size: 10 } },
+            grid: { display: false },
+          },
+        },
+      }
+    });
+    activeCharts.push(chart);
+  }
+
+  const defaultOpts = {
+    responsive: true,
+    maintainAspectRatio: true,
+    animation: { duration: 400, easing: 'easeOutQuart' },
+    plugins: {
+      legend: { labels: { color: '#8b8fa7', font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 16 } },
+      tooltip: {
+        backgroundColor: '#1a1c26',
+        titleColor: '#e4e6ef',
+        bodyColor: '#8b8fa7',
+        borderColor: '#2d3055',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8,
+        titleFont: { family: 'Inter', weight: '600' },
+        bodyFont: { family: 'JetBrains Mono', size: 12 },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: '#5a5e78', maxRotation: 45, font: { family: 'Inter', size: 9 } },
+        grid: { color: 'rgba(30, 32, 48, 0.8)', lineWidth: 0.5 },
+      },
+      y: {
+        ticks: { color: '#5a5e78', font: { family: 'JetBrains Mono', size: 10 } },
+        grid: { color: 'rgba(30, 32, 48, 0.8)', lineWidth: 0.5 },
+      },
+    },
+  };
+
+  for (const def of chartDefs) {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h3>${def.title}</h3><canvas></canvas>`;
+    chartsEl.appendChild(card);
+    const ctx = card.querySelector('canvas').getContext('2d');
+    const merged = JSON.parse(JSON.stringify(defaultOpts));
+    if (def.opts.scales) {
+      for (const [axis, conf] of Object.entries(def.opts.scales)) {
+        merged.scales[axis] = { ...merged.scales[axis], ...conf };
+        if (conf.ticks) merged.scales[axis].ticks = { ...merged.scales[axis].ticks, ...conf.ticks };
+      }
+    }
+    const chart = new Chart(ctx, { type: def.type, data: def.data, options: merged });
+    activeCharts.push(chart);
+  }
+}
+
+// Boot
+fetchStats();
+startCountdown();
+</script>
+</body>
+</html>
