@@ -6,4 +6,6 @@ jobs:
   ready:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "ready"
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: python3 -m py_compile serve.py
