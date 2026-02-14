@@ -137,6 +137,10 @@ Key principles: specify WHAT not HOW, reference liberally, make discovery explic
 
 Full guide: `.claude/library/goal-authoring/SKILL.md`
 
+### Goal Authoring for This Repo
+
+When creating goals targeting this repository, use `--org ai4mgreenly --repo ralph-counts`.
+
 ## Common Tasks
 
 **Modifying the dashboard:** Edit `index.html` (Chart.js SPA), restart `serve.py`.
