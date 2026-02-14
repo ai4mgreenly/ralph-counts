@@ -7,7 +7,8 @@ import os
 import sys
 
 STATS_PATH = os.path.expanduser("~/.local/state/ralph/stats.jsonl")
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 1982
+HOST = os.environ.get("RALPH_COUNTS_HOST", "localhost")
+PORT = int(os.environ.get("RALPH_COUNTS_PORT", "5004"))
 DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -37,8 +38,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = http.server.HTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"ralph-counts → http://127.0.0.1:{PORT}")
+    server = http.server.HTTPServer((HOST, PORT), Handler)
+    print(f"ralph-counts → http://{HOST}:{PORT}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
