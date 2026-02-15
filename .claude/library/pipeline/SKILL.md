@@ -45,7 +45,7 @@ Human writes goal → goal-create (draft) → goal-queue (queued) → Ralph exec
 
 | Command | Usage | Does |
 |---------|-------|------|
-| `goal-create` | `--title "..." --org ORG --repo REPO [--model MODEL] [--reasoning LEVEL] < body.md` | Create goal (draft). Body via stdin. Optional model (haiku/sonnet/opus) and reasoning (none/low/med/high). |
+| `goal-create` | `--title "..." --org ORG --repo REPO [--model MODEL] [--reasoning LEVEL] < body.md` | Create goal (draft). Body via stdin. **Default: omit `--model` and `--reasoning`** — only include when user explicitly requests for this specific goal. |
 | `goal-list` | `[--status STATUS] [--org ORG] [--repo REPO]` | List goals, optionally filtered |
 | `goal-get` | `<id>` | Read goal body + status |
 | `goal-queue` | `<id>` | Transition draft → queued |
@@ -74,6 +74,21 @@ Then queue it:
 ```bash
 goal-queue <id>
 ```
+
+## Model and Reasoning Flags
+
+**Default behavior: do NOT include `--model` or `--reasoning` flags.** The orchestrator uses its own defaults.
+
+**Only include these flags when:**
+
+- The user explicitly specifies a model for this particular goal: "create this goal with opus", "use haiku for this task"
+- The user explicitly specifies a reasoning level for this particular goal: "use high reasoning for this"
+
+**Do not include these flags for:**
+
+- General requests without model/reasoning preferences
+- Default workflow — let the orchestrator choose
+- Personal preferences or assumptions about what model should be used
 
 ## Goal Authoring
 
