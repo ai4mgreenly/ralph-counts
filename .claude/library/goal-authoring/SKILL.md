@@ -38,6 +38,22 @@ Goals are created via `goal-create` with body on stdin. The body must follow thi
 5. **Trust Ralph to iterate** — Discovers path, learns from failures
 6. **Be explicit about discovery** — If work requires finding all instances of X, state it clearly in both objective and outcomes. Ralph has gotten stuck when discovery wasn't explicit. Write "Discover and fix all hardcoded paths" not "Fix hardcoded paths" or "Fix paths at lines 10, 25, 40"
 
+## Model and Reasoning Selection
+
+Goals can optionally specify model and reasoning level via `goal-create` flags:
+
+- `--model MODEL` — haiku, sonnet, or opus (default: sonnet)
+- `--reasoning LEVEL` — none, low, med, or high (default: low)
+
+**When to specify:**
+
+- **Default (sonnet + low)** — Most goals work fine with defaults
+- **Haiku** — Simple, well-defined tasks with clear acceptance criteria (renaming, formatting, doc updates)
+- **Opus + high reasoning** — Complex refactoring, architectural changes, or goals requiring deep understanding across many files
+- **High reasoning** — Goals with subtle logic, error-prone edge cases, or requiring careful planning
+
+**When in doubt:** Omit model/reasoning and let the system use defaults. Ralph will iterate and complete the work regardless of model choice.
+
 ## Example: Bad vs Good
 
 **Bad (context-limited thinking):**
