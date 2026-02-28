@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+python3 -c "import py_compile; py_compile.compile('serve.py', doraise=True)"
+
+test -f index.html
