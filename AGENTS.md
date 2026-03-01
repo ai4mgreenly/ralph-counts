@@ -4,6 +4,21 @@ Metrics dashboard for the Ralph pipeline. Visualizes task execution stats — co
 
 Philosophy: deliberately minimalist. Python standard library, no framework, single-page HTML UI.
 
+## Default Workflow: Goals-First
+
+**All code changes in this repo go through goals. Do not make direct code changes unless the user gives extremely explicit instructions to do so.**
+
+The standard workflow is:
+
+1. `goal-create` — draft a goal describing the change
+2. `goal-queue` — queue it for execution
+3. Ralph executes the goal and opens a PR
+4. The PR is reviewed and merged
+
+**Direct/local code changes are NOT permitted** unless the user explicitly says something like "make this change directly", "edit this file now", or "do this locally". Vague or implicit requests are not sufficient — the instruction must be unambiguous.
+
+When in doubt, create and queue a goal. That is always the right default.
+
 ## Architecture
 
 Part of a multi-service system:
