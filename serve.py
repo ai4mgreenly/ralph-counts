@@ -7,7 +7,7 @@ import os
 import sys
 
 STATS_PATH = os.path.expanduser("~/.local/state/ralph/stats.jsonl")
-HOST = os.environ.get("RALPH_COUNTS_HOST", "localhost")
+HOST = os.environ.get("RALPH_COUNTS_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RALPH_COUNTS_PORT", "5004"))
 DIR = os.path.dirname(os.path.abspath(__file__))
 
