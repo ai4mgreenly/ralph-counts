@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ralph Counts</title>
-<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -361,7 +361,7 @@ function destroyCharts() {
 
 async function fetchStats() {
   try {
-    const res = await fetch('/api/stats');
+    const res = await fetch('api/stats');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     errorBanner.classList.remove('visible');
