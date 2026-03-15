@@ -307,8 +307,8 @@
     <div class="header-right">
       <div class="time-filter" id="timeFilter">
         <button data-range="24h">24h</button>
-        <button data-range="7d" class="active">7d</button>
-        <button data-range="30d">30d</button>
+        <button data-range="7d">7d</button>
+        <button data-range="30d" class="active">30d</button>
         <button data-range="12m">12m</button>
         <button data-range="52w">52w</button>
       </div>
@@ -334,7 +334,7 @@ let countdown = 30;
 let countdownInterval = null;
 let lastDataHash = '';
 let allData = [];
-let activeRange = '7d';
+let activeRange = '30d';
 const filterInfo = document.getElementById('filterInfo');
 const timeFilter = document.getElementById('timeFilter');
 
